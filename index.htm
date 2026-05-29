@@ -1,0 +1,2085 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ChromaSync — Color Game</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg: #080810;
+    --surface: #0f0f1a;
+    --surface2: #16162a;
+    --accent: #00f5c4;
+    --accent2: #7b5ea7;
+    --accent3: #ff4d6d;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --border: rgba(255,255,255,0.07);
+    --glow: 0 0 40px rgba(0,245,196,0.15);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== CANVAS BG ===== */
+  #bgCanvas {
+    position: fixed; inset: 0; z-index: 0;
+    pointer-events: none; opacity: 0.4;
+  }
+
+  /* ===== SCREENS ===== */
+  .screen {
+    display: none;
+    position: fixed; inset: 0; z-index: 10;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .screen.active { display: flex; }
+
+  /* ===== HOME ===== */
+  #homeScreen {
+    gap: 3rem;
+  }
+
+  .logo-wrap {
+    text-align: center;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .logo-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .logo-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(4rem, 12vw, 9rem);
+    line-height: 0.9;
+    letter-spacing: 0.02em;
+    background: linear-gradient(135deg, #fff 30%, var(--accent) 70%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 60px rgba(0,245,196,0.3));
+  }
+
+  .logo-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    margin-top: 0.8rem;
+  }
+
+  .home-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    max-width: 340px;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+
+  .btn-main {
+    position: relative;
+    padding: 1.1rem 2rem;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  .btn-main::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.07);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .btn-main:hover::before { opacity: 1; }
+  .btn-main:hover { transform: translateY(-2px); }
+  .btn-main:active { transform: translateY(0); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #00c4a0);
+    color: #080810;
+    box-shadow: 0 0 30px rgba(0,245,196,0.3);
+  }
+  .btn-primary:hover { box-shadow: 0 0 50px rgba(0,245,196,0.5); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-credits {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.8rem;
+  }
+  .btn-credits:hover { color: var(--text); border-color: var(--border); }
+
+  .btn-tag {
+    position: absolute;
+    top: 6px; right: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    opacity: 0.6;
+    text-transform: uppercase;
+  }
+
+  /* ===== PANEL ===== */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5), var(--glow);
+    animation: panelIn 0.4s ease both;
+  }
+
+  .panel-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+    color: var(--accent);
+  }
+
+  .panel-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    margin-bottom: 2rem;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .input-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .input-field {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,245,196,0.1);
+  }
+  .input-field::placeholder { color: var(--muted); text-transform: none; letter-spacing: 0.1em; }
+
+  .code-display {
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 1.2rem;
+    text-align: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.8rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+    box-shadow: 0 0 20px rgba(0,245,196,0.1);
+    margin-bottom: 0.5rem;
+  }
+
+  .code-hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-back {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    transition: color 0.2s;
+  }
+  .btn-back:hover { color: var(--text); }
+
+  /* ===== WAITING ===== */
+  .waiting-wrap {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .pulse-ring {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pulse-ring::before, .pulse-ring::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+    animation: pulseRing 2s ease-out infinite;
+    opacity: 0;
+  }
+  .pulse-ring::after { animation-delay: 1s; }
+
+  .pulse-icon {
+    font-size: 2rem;
+  }
+
+  .player-slots {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .player-slot {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.8rem 1.2rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    min-width: 100px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+  .player-slot.joined {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 15px rgba(0,245,196,0.15);
+  }
+
+  .vs-divider {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    color: var(--muted);
+  }
+
+  /* ===== ROLE REVEAL ===== */
+  #roleScreen {
+    gap: 2rem;
+    text-align: center;
+  }
+
+  .role-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 10vw, 6rem);
+    letter-spacing: 0.05em;
+    line-height: 1;
+  }
+  .role-badge.observer { color: var(--accent2); text-shadow: 0 0 60px rgba(123,94,167,0.5); }
+  .role-badge.selector { color: var(--accent); text-shadow: 0 0 60px rgba(0,245,196,0.5); }
+
+  .role-desc {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    max-width: 280px;
+    line-height: 1.8;
+    letter-spacing: 0.05em;
+  }
+
+  .countdown-bar-wrap {
+    width: 200px;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .countdown-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.1s linear;
+  }
+
+  /* ===== GAME: OBSERVER ===== */
+  #observerScreen {
+    gap: 2rem;
+    text-align: center;
+  }
+
+  .color-swatch-big {
+    width: clamp(180px, 40vw, 280px);
+    height: clamp(180px, 40vw, 280px);
+    border-radius: 20px;
+    border: 2px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    transition: background 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .color-swatch-big::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%);
+    border-radius: inherit;
+  }
+
+  .color-hex-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: 0.2em;
+    opacity: 0.8;
+  }
+
+  .obs-timer {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+  }
+
+  .obs-timer span {
+    color: var(--accent);
+    font-size: 1.2rem;
+    font-weight: 500;
+  }
+
+  /* ===== GAME: SELECTOR ===== */
+  #selectorScreen {
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  .selector-header {
+    text-align: center;
+    width: 100%;
+  }
+
+  .selector-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+
+  .selector-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+  }
+
+  .color-picker-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  /* Hue-Saturation-Lightness picker */
+  .picker-canvas-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    cursor: crosshair;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  }
+
+  #pickerCanvas {
+    display: block;
+    width: 100%;
+    height: 200px;
+  }
+
+  #hueSlider, #lightnessSlider {
+    width: 100%;
+    max-width: 340px;
+    height: 18px;
+    border-radius: 999px;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+  }
+
+  #hueSlider {
+    background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  }
+
+  #hueSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    cursor: grab;
+  }
+
+  #lightnessSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    cursor: grab;
+  }
+
+  .sel-preview-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .sel-preview-box {
+    width: 60px; height: 60px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    transition: background 0.1s;
+  }
+
+  .sel-preview-info {
+    flex: 1;
+  }
+
+  .sel-preview-hex {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    color: var(--text);
+  }
+
+  .sel-preview-rgb {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 0.2rem;
+  }
+
+  .timer-row {
+    width: 100%;
+    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .timer-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .timer-label span { color: var(--accent); font-size: 0.85rem; }
+
+  .timer-track {
+    width: 100%;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .timer-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), #00c4a0);
+    transition: width 0.1s linear;
+  }
+
+  .timer-fill.warning {
+    background: linear-gradient(90deg, var(--accent3), #ff8c00);
+  }
+
+  /* ===== ROUND RESULT ===== */
+  #roundResultScreen {
+    gap: 2rem;
+    text-align: center;
+  }
+
+  .result-colors {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .result-color-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .result-swatch {
+    width: 100px; height: 100px;
+    border-radius: 14px;
+    border: 2px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+
+  .result-color-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .result-hex {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+  }
+
+  .result-score-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    letter-spacing: 0.1em;
+  }
+
+  .result-diff {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .score-board {
+    display: flex;
+    gap: 3rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .score-card {
+    text-align: center;
+  }
+
+  .score-card-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    margin-bottom: 0.3rem;
+  }
+
+  .score-card-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.5rem;
+    color: var(--accent);
+  }
+
+  /* ===== GAME OVER ===== */
+  #gameOverScreen { gap: 2rem; text-align: center; }
+
+  .winner-crown {
+    font-size: 3rem;
+    animation: bounce 1s ease infinite alternate;
+  }
+
+  .winner-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.5rem, 8vw, 5rem);
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    text-shadow: 0 0 60px rgba(0,245,196,0.4);
+  }
+
+  .final-scores {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+  }
+
+  .final-score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    text-align: center;
+  }
+
+  .final-score-card.winner {
+    border-color: var(--accent);
+    box-shadow: 0 0 30px rgba(0,245,196,0.2);
+  }
+
+  /* ===== SOLO GAME ===== */
+  #soloScreen {
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  .solo-header {
+    text-align: center;
+    width: 100%;
+  }
+
+  .round-indicator {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-align: center;
+  }
+
+  /* ===== CREDITS ===== */
+  #creditsScreen {
+    background: #0a0000;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .credits-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.03) 2px, rgba(255,0,0,0.03) 4px),
+      repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,0,0,0.02) 2px, rgba(255,0,0,0.02) 4px);
+    animation: scanlines 0.5s linear infinite;
+  }
+
+  .credits-noise {
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  .credits-flicker {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 0, 0, 0.03);
+    animation: flicker 0.15s infinite;
+  }
+
+  .credits-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 3rem 2rem;
+    gap: 2rem;
+    text-align: center;
+  }
+
+  .credits-skull {
+    font-size: 2.5rem;
+    animation: glitch 2s infinite;
+  }
+
+  .credits-sys-line {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: rgba(255,50,50,0.6);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    animation: blink 1s step-end infinite;
+  }
+
+  .credits-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 12vw, 7rem);
+    color: #ff2020;
+    letter-spacing: 0.05em;
+    text-shadow: 2px 2px 0 #8b0000, 0 0 30px rgba(255,0,0,0.5), 0 0 80px rgba(255,0,0,0.2);
+    animation: redGlitch 3s infinite;
+    line-height: 1;
+  }
+
+  .credits-divider {
+    width: 100%;
+    max-width: 400px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,50,50,0.5), transparent);
+  }
+
+  .credits-card {
+    background: rgba(80, 0, 0, 0.3);
+    border: 1px solid rgba(255, 0, 0, 0.2);
+    border-radius: 12px;
+    padding: 2rem 3rem;
+    position: relative;
+    overflow: hidden;
+    max-width: 380px;
+    width: 100%;
+  }
+
+  .credits-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,0,0,0.05) 0%, transparent 50%);
+  }
+
+  .credits-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.8rem;
+    color: #ff6060;
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 20px rgba(255,50,50,0.4);
+    line-height: 1.1;
+  }
+
+  .credits-roles {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 1rem;
+  }
+
+  .credits-role {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(255, 120, 120, 0.7);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .credits-role::before {
+    content: '//';
+    opacity: 0.4;
+  }
+
+  .credits-version {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(255,50,50,0.3);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+
+  .credits-error-line {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: rgba(255,50,50,0.4);
+    letter-spacing: 0.1em;
+    animation: typewriter 4s steps(50) infinite;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 300px;
+  }
+
+  /* ===== NOTIFICATIONS ===== */
+  .notif {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 999;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 1.2rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    transform: translateX(120%);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 280px;
+  }
+  .notif.show { transform: translateX(0); }
+  .notif.error { border-color: var(--accent3); color: var(--accent3); }
+  .notif.success { border-color: var(--accent); color: var(--accent); }
+  .notif.info { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes panelIn {
+    from { opacity: 0; transform: scale(0.96) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes pulseRing {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  @keyframes bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-10px); }
+  }
+  @keyframes scanlines {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 4px; }
+  }
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+    75% { opacity: 0.95; }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  @keyframes redGlitch {
+    0%, 100% { text-shadow: 2px 2px 0 #8b0000, 0 0 30px rgba(255,0,0,0.5); transform: none; }
+    92% { transform: none; }
+    93% { transform: translate(-3px, 1px); text-shadow: -2px 2px 0 #8b0000, 0 0 30px rgba(255,0,0,0.5); }
+    94% { transform: translate(3px, -1px); text-shadow: 2px -2px 0 #8b0000; }
+    95% { transform: none; text-shadow: 2px 2px 0 #8b0000, 0 0 30px rgba(255,0,0,0.5); }
+  }
+  @keyframes glitch {
+    0%, 100% { transform: none; }
+    94% { transform: none; }
+    95% { transform: translate(-2px, 1px) scale(1.05); }
+    96% { transform: translate(2px, -1px); }
+    97% { transform: none; }
+  }
+  @keyframes typewriter {
+    0% { width: 0; }
+    50% { width: 100%; }
+    90% { width: 100%; }
+    100% { width: 0; }
+  }
+
+  /* Observer hidden color phase */
+  .hidden-phase .color-swatch-big {
+    filter: blur(20px);
+  }
+  .hidden-phase .color-hex-label {
+    color: transparent;
+  }
+
+  /* Selector waiting overlay */
+  .waiting-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(8,8,16,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    border-radius: inherit;
+    z-index: 5;
+  }
+
+  /* Solo result */
+  .solo-result-row {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .accuracy-ring-wrap {
+    position: relative;
+    width: 120px; height: 120px;
+  }
+  .accuracy-ring-wrap svg {
+    transform: rotate(-90deg);
+  }
+  .accuracy-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    color: var(--accent);
+  }
+  .accuracy-text small {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .solo-score-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 5rem;
+    color: var(--accent);
+    line-height: 1;
+    text-shadow: 0 0 40px rgba(0,245,196,0.3);
+  }
+
+  .solo-score-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<!-- ===================== HOME ===================== -->
+<div id="homeScreen" class="screen active">
+  <div class="logo-wrap">
+    <p class="logo-eyebrow">● LIVE</p>
+    <h1 class="logo-title">CHROMA<br>SYNC</h1>
+    <p class="logo-sub">COLOR PERCEPTION GAME</p>
+  </div>
+  <div class="home-btns">
+    <button class="btn-main btn-primary" onclick="showScreen('lobbyScreen')">
+      INICIAR
+      <span class="btn-tag">MULTIPLAYER</span>
+    </button>
+    <button class="btn-main btn-secondary" onclick="startSolo()">
+      SOLO GAME
+      <span class="btn-tag">1 PLAYER</span>
+    </button>
+    <button class="btn-main btn-credits" onclick="showScreen('creditsScreen')">
+      CRÉDITOS
+    </button>
+  </div>
+</div>
+
+<!-- ===================== LOBBY ===================== -->
+<div id="lobbyScreen" class="screen">
+  <div class="panel">
+    <p class="panel-title">JOGAR</p>
+    <p class="panel-sub">// MODO MULTIPLAYER</p>
+    <button class="btn-main btn-primary" style="margin-bottom:0.8rem" onclick="showScreen('createScreen')">CRIAR SALA</button>
+    <button class="btn-main btn-secondary" onclick="showScreen('joinScreen')">ENTRAR EM SALA</button>
+    <button class="btn-back" onclick="showScreen('homeScreen')">← VOLTAR</button>
+  </div>
+</div>
+
+<!-- ===================== CREATE ===================== -->
+<div id="createScreen" class="screen">
+  <div class="panel">
+    <p class="panel-title">CRIAR SALA</p>
+    <p class="panel-sub">// COMPARTILHE O CÓDIGO COM SEU AMIGO</p>
+    <div class="code-display" id="roomCodeDisplay">——————</div>
+    <p class="code-hint">CÓDIGO DA SALA · 3 LETRAS + 3 NÚMEROS</p>
+    <div class="input-group">
+      <label class="input-label">SEU NOME</label>
+      <input class="input-field" id="createName" placeholder="Digite seu nome" maxlength="12" />
+    </div>
+    <button class="btn-main btn-primary" onclick="createRoom()">CRIAR E AGUARDAR</button>
+    <button class="btn-back" onclick="showScreen('lobbyScreen')">← VOLTAR</button>
+  </div>
+</div>
+
+<!-- ===================== JOIN ===================== -->
+<div id="joinScreen" class="screen">
+  <div class="panel">
+    <p class="panel-title">ENTRAR</p>
+    <p class="panel-sub">// INSIRA O CÓDIGO DA SALA</p>
+    <div class="input-group">
+      <label class="input-label">CÓDIGO DA SALA</label>
+      <input class="input-field" id="joinCode" placeholder="Ex: ABX-472" maxlength="7" oninput="formatJoinCode(this)" />
+    </div>
+    <div class="input-group">
+      <label class="input-label">SEU NOME</label>
+      <input class="input-field" id="joinName" placeholder="Digite seu nome" maxlength="12" />
+    </div>
+    <button class="btn-main btn-primary" onclick="joinRoom()">ENTRAR</button>
+    <button class="btn-back" onclick="showScreen('lobbyScreen')">← VOLTAR</button>
+  </div>
+</div>
+
+<!-- ===================== WAITING ===================== -->
+<div id="waitingScreen" class="screen">
+  <div class="panel">
+    <div class="waiting-wrap">
+      <div class="pulse-ring"><span class="pulse-icon">⬡</span></div>
+      <div>
+        <p class="panel-title" style="color:var(--text)">AGUARDANDO</p>
+        <p class="panel-sub" style="text-align:center">// SALA: <span id="waitRoomCode" style="color:var(--accent)">——</span></p>
+      </div>
+      <div class="player-slots">
+        <div class="player-slot joined" id="slot1">P1</div>
+        <div class="vs-divider">VS</div>
+        <div class="player-slot" id="slot2">AGUARDANDO...</div>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.15em;text-align:center">
+        Compartilhe o código acima<br>com seu adversário
+      </p>
+      <button class="btn-main btn-credits" style="width:100%" onclick="leaveRoom()">CANCELAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ROLE REVEAL ===================== -->
+<div id="roleScreen" class="screen">
+  <p style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.3em">SEU PAPEL NESSA RODADA</p>
+  <div class="role-badge" id="roleBadge">—</div>
+  <p class="role-desc" id="roleDesc">—</p>
+  <div class="countdown-bar-wrap">
+    <div class="countdown-bar" id="roleCountdown" style="width:100%"></div>
+  </div>
+  <p style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.15em">O JOGO INICIA EM INSTANTES...</p>
+</div>
+
+<!-- ===================== OBSERVER GAME ===================== -->
+<div id="observerScreen" class="screen">
+  <div style="text-align:center">
+    <p style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--accent);letter-spacing:0.3em">VOCÊ É O OBSERVADOR</p>
+    <p style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.1em;margin-top:0.3rem" id="obsRound">RODADA 1 / 5</p>
+  </div>
+  <div class="color-swatch-big" id="obsSwatch"></div>
+  <p class="color-hex-label" id="obsHex">#000000</p>
+  <div id="obsPhaseMsg" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted);letter-spacing:0.1em;text-align:center">
+    Memorize essa cor e descreva para seu amigo!
+  </div>
+  <div class="timer-row" style="max-width:300px;width:100%">
+    <div class="timer-label">
+      <span style="letter-spacing:0.2em">TEMPO VISÍVEL</span>
+      <span id="obsTimerNum">5</span>
+    </div>
+    <div class="timer-track"><div class="timer-fill" id="obsTimerBar" style="width:100%"></div></div>
+  </div>
+</div>
+
+<!-- ===================== SELECTOR GAME ===================== -->
+<div id="selectorScreen" class="screen">
+  <div class="selector-header">
+    <p class="selector-title">SELECIONE A COR</p>
+    <p class="selector-sub" id="selRound">// RODADA 1 / 5</p>
+  </div>
+  <div class="color-picker-area">
+    <div class="picker-canvas-wrap" id="pickerWrap">
+      <canvas id="pickerCanvas"></canvas>
+      <div class="waiting-overlay" id="selWaitingOverlay">
+        <span>AGUARDANDO OBSERVADOR...</span>
+      </div>
+    </div>
+    <input type="range" id="hueSlider" min="0" max="360" value="0" />
+    <input type="range" id="lightnessSlider" min="0" max="100" value="50"
+      style="background: linear-gradient(to right, #000, hsl(0,100%,50%), #fff)" />
+    <div class="sel-preview-row">
+      <div class="sel-preview-box" id="selPreviewBox"></div>
+      <div class="sel-preview-info">
+        <div class="sel-preview-hex" id="selPreviewHex">#FF0000</div>
+        <div class="sel-preview-rgb" id="selPreviewRgb">rgb(255, 0, 0)</div>
+      </div>
+      <button class="btn-main btn-primary" style="padding:0.7rem 1.2rem;font-size:0.75rem" onclick="submitColor()">CONFIRMAR</button>
+    </div>
+    <div class="timer-row">
+      <div class="timer-label">
+        <span style="letter-spacing:0.2em">TEMPO RESTANTE</span>
+        <span id="selTimerNum">15</span>
+      </div>
+      <div class="timer-track"><div class="timer-fill" id="selTimerBar" style="width:100%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ROUND RESULT ===================== -->
+<div id="roundResultScreen" class="screen">
+  <p style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.3em" id="rrRound">RESULTADO · RODADA 1</p>
+  <div class="result-colors">
+    <div class="result-color-card">
+      <div class="result-swatch" id="rrTargetSwatch"></div>
+      <div class="result-color-label">COR ALVO</div>
+      <div class="result-hex" id="rrTargetHex"></div>
+    </div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--muted)">→</div>
+    <div class="result-color-card">
+      <div class="result-swatch" id="rrChosenSwatch"></div>
+      <div class="result-color-label">SUA ESCOLHA</div>
+      <div class="result-hex" id="rrChosenHex"></div>
+    </div>
+  </div>
+  <div class="result-score-display" id="rrPoints" style="color:var(--accent)">+0</div>
+  <div class="result-diff" id="rrDiff">diferença: 0</div>
+  <div class="score-board">
+    <div class="score-card">
+      <div class="score-card-name" id="rrP1Name">P1</div>
+      <div class="score-card-val" id="rrP1Score">0</div>
+    </div>
+    <div style="font-family:'DM Mono',monospace;color:var(--muted);font-size:0.8rem">PTS</div>
+    <div class="score-card">
+      <div class="score-card-name" id="rrP2Name">P2</div>
+      <div class="score-card-val" id="rrP2Score" style="color:var(--accent2)">0</div>
+    </div>
+  </div>
+  <button class="btn-main btn-primary" id="rrNextBtn" style="width:200px" onclick="nextRound()">PRÓXIMA RODADA →</button>
+</div>
+
+<!-- ===================== GAME OVER ===================== -->
+<div id="gameOverScreen" class="screen">
+  <div class="winner-crown" id="winCrown">🏆</div>
+  <div class="winner-title" id="winTitle">VENCEDOR!</div>
+  <p style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--muted);letter-spacing:0.1em" id="winName">—</p>
+  <div class="final-scores" id="finalScores"></div>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:1rem">
+    <button class="btn-main btn-primary" style="width:200px" onclick="playAgain()">JOGAR NOVAMENTE</button>
+    <button class="btn-main btn-secondary" style="width:200px" onclick="leaveRoom()">MENU PRINCIPAL</button>
+  </div>
+</div>
+
+<!-- ===================== SOLO GAME ===================== -->
+<div id="soloScreen" class="screen">
+  <div class="solo-header">
+    <p class="selector-title">SOLO GAME</p>
+    <p class="selector-sub" id="soloRound">// RODADA 1 / 10</p>
+  </div>
+
+  <!-- Solo: observe phase -->
+  <div id="soloObservePhase" style="display:flex;flex-direction:column;align-items:center;gap:1.5rem;width:100%">
+    <div class="color-swatch-big" id="soloSwatch"></div>
+    <p class="color-hex-label" id="soloHex">#000000</p>
+    <p style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted);letter-spacing:0.1em;text-align:center">
+      Memorize essa cor!
+    </p>
+    <div class="timer-row" style="max-width:300px;width:100%">
+      <div class="timer-label"><span>TEMPO VISÍVEL</span><span id="soloObsTimer">5</span></div>
+      <div class="timer-track"><div class="timer-fill" id="soloObsBar" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <!-- Solo: pick phase -->
+  <div id="soloPickPhase" style="display:none;flex-direction:column;align-items:center;gap:1.5rem;width:100%;max-width:500px">
+    <p style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted);letter-spacing:0.1em;text-align:center">
+      Qual era a cor?
+    </p>
+    <div class="picker-canvas-wrap" style="max-width:340px;width:100%">
+      <canvas id="soloPickerCanvas"></canvas>
+    </div>
+    <input type="range" id="soloHueSlider" min="0" max="360" value="0" style="width:100%;max-width:340px;height:18px;border-radius:999px;border:none;outline:none;cursor:pointer;-webkit-appearance:none;background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);" />
+    <input type="range" id="soloLightnessSlider" min="0" max="100" value="50" style="width:100%;max-width:340px;height:18px;border-radius:999px;border:none;outline:none;cursor:pointer;-webkit-appearance:none;background: linear-gradient(to right, #000, hsl(0,100%,50%), #fff)" />
+    <div class="sel-preview-row" style="max-width:340px;width:100%">
+      <div class="sel-preview-box" id="soloPreviewBox"></div>
+      <div class="sel-preview-info">
+        <div class="sel-preview-hex" id="soloPreviewHex">#FF0000</div>
+        <div class="sel-preview-rgb" id="soloPreviewRgb">rgb(255, 0, 0)</div>
+      </div>
+      <button class="btn-main btn-primary" style="padding:0.7rem 1.2rem;font-size:0.75rem" onclick="soloSubmit()">OK</button>
+    </div>
+    <div class="timer-row" style="max-width:340px;width:100%">
+      <div class="timer-label"><span>TEMPO RESTANTE</span><span id="soloPickTimer">15</span></div>
+      <div class="timer-track"><div class="timer-fill" id="soloPickBar" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <!-- Solo: round result -->
+  <div id="soloRoundResult" style="display:none;flex-direction:column;align-items:center;gap:1.2rem;width:100%;text-align:center">
+    <div class="solo-result-row">
+      <div class="result-color-card">
+        <div class="result-swatch" id="soloTargetSwatch"></div>
+        <div class="result-color-label">ALVO</div>
+        <div class="result-hex" id="soloTargetHex"></div>
+      </div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--muted)">→</div>
+      <div class="result-color-card">
+        <div class="result-swatch" id="soloChosenSwatch"></div>
+        <div class="result-color-label">SUA ESCOLHA</div>
+        <div class="result-hex" id="soloChosenHex"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:2rem;align-items:center;justify-content:center">
+      <div class="accuracy-ring-wrap">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="8"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="var(--accent)" stroke-width="8"
+            stroke-dasharray="314" id="soloAccuracyRing" stroke-dashoffset="314"
+            stroke-linecap="round" style="transition:stroke-dashoffset 1s ease"/>
+        </svg>
+        <div class="accuracy-text"><span id="soloAccText">0%</span><small>PRECISÃO</small></div>
+      </div>
+      <div>
+        <div class="solo-score-val" id="soloRoundPts">+0</div>
+        <div class="solo-score-label">PONTOS</div>
+      </div>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)">
+      TOTAL: <span id="soloTotalDisplay" style="color:var(--accent)">0</span> PTS
+    </div>
+    <button class="btn-main btn-primary" id="soloNextBtn" style="width:200px" onclick="soloNextRound()">PRÓXIMA →</button>
+  </div>
+</div>
+
+<!-- ===================== SOLO OVER ===================== -->
+<div id="soloOverScreen" class="screen">
+  <p style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.3em">FIM DE JOGO · SOLO</p>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(4rem,12vw,7rem);color:var(--accent);text-shadow:0 0 60px rgba(0,245,196,0.4);line-height:1" id="soloFinalPts">0</div>
+  <p style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted);letter-spacing:0.2em">PONTOS TOTAIS</p>
+  <div style="display:flex;gap:2rem;flex-wrap:wrap;justify-content:center">
+    <div style="text-align:center">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text)" id="soloFinalAcc">0%</div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.2em">PRECISÃO MÉDIA</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text)" id="soloFinalBest">0</div>
+      <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.2em">MELHOR RODADA</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center">
+    <button class="btn-main btn-primary" style="width:200px" onclick="startSolo()">JOGAR NOVAMENTE</button>
+    <button class="btn-main btn-secondary" style="width:200px" onclick="showScreen('homeScreen')">MENU</button>
+  </div>
+</div>
+
+<!-- ===================== CREDITS ===================== -->
+<div id="creditsScreen" class="screen">
+  <div class="credits-bg"></div>
+  <div class="credits-noise"></div>
+  <div class="credits-flicker"></div>
+  <div class="credits-content">
+    <div class="credits-skull">💀</div>
+    <div class="credits-sys-line">SYSTEM BREACH DETECTED · UNAUTHORIZED ACCESS</div>
+    <div class="credits-title">CRÉDITOS</div>
+    <div class="credits-divider"></div>
+    <div class="credits-card">
+      <div class="credits-name">VICTOR<br>HUGO</div>
+      <div class="credits-roles">
+        <div class="credits-role">Desenvolvedor</div>
+        <div class="credits-role">Programador</div>
+        <div class="credits-role">Designer</div>
+        <div class="credits-role">Criador</div>
+      </div>
+    </div>
+    <div class="credits-error-line">ERROR_0x4C4F4F50: INFINITE_LOOP_DETECTED // GENIUS_OVERFLOW</div>
+    <div class="credits-version">CHROMASYNC v1.0.0 · BUILD 2025</div>
+    <button class="btn-main" style="background:rgba(80,0,0,0.4);border:1px solid rgba(255,0,0,0.3);color:#ff6060;font-size:0.8rem;margin-top:1rem" onclick="showScreen('homeScreen')">← SAIR DO SISTEMA</button>
+  </div>
+</div>
+
+<!-- NOTIF -->
+<div class="notif" id="notif"></div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, update, onValue, remove, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCuMAm410rj1Sn0D-nlSdPoiP1UEO5CZig",
+  authDomain: "colorgame-ee82e.firebaseapp.com",
+  projectId: "colorgame-ee82e",
+  storageBucket: "colorgame-ee82e.firebasestorage.app",
+  messagingSenderId: "841894223645",
+  appId: "1:841894223645:web:7bc295ac79c3c3925f4bf4",
+  measurementId: "G-M9M17PY63S",
+  databaseURL: "https://colorgame-ee82e-default-rtdb.firebaseio.com"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ============================================================
+// STATE
+// ============================================================
+let myId = null;         // 'p1' or 'p2'
+let roomCode = null;
+let roomRef = null;
+let roomListener = null;
+let myName = '';
+let opponentName = '';
+let currentRound = 0;
+const TOTAL_ROUNDS = 5;
+let scores = { p1: 0, p2: 0 };
+let names = { p1: '', p2: '' };
+let currentTargetColor = null;
+let myRole = null;       // 'observer' | 'selector'
+let selTimerInterval = null;
+let obsTimerInterval = null;
+let selTimeLeft = 15;
+let currentSelectedColor = '#FF0000';
+let currentSelectedColorMp = '#FF0000';
+
+// ============================================================
+// BG CANVAS ANIMATION
+// ============================================================
+(function bgAnim() {
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  function makeParticle() {
+    return {
+      x: Math.random() * W, y: Math.random() * H,
+      r: Math.random() * 1.5 + 0.3,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      a: Math.random() * 0.5 + 0.1,
+      c: Math.random() < 0.5 ? '0,245,196' : '123,94,167'
+    };
+  }
+  resize();
+  for (let i = 0; i < 120; i++) particles.push(makeParticle());
+  window.addEventListener('resize', resize);
+  function loop() {
+    ctx.clearRect(0, 0, W, H);
+    for (let p of particles) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.c},${p.a})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+// ============================================================
+// SCREEN UTILS
+// ============================================================
+window.showScreen = function(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+};
+
+function showNotif(msg, type = 'info') {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.className = 'notif ' + type + ' show';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// CODE GENERATION
+// ============================================================
+function generateCode() {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const digits = '0123456789';
+  let l = '', d = '';
+  for (let i = 0; i < 3; i++) l += letters[Math.floor(Math.random() * letters.length)];
+  for (let i = 0; i < 3; i++) d += digits[Math.floor(Math.random() * digits.length)];
+  return l + d;
+}
+
+// Show code when entering create screen
+const origShow = window.showScreen;
+window.showScreen = function(id) {
+  origShow(id);
+  if (id === 'createScreen') {
+    const code = generateCode();
+    document.getElementById('roomCodeDisplay').textContent = code.slice(0,3) + '-' + code.slice(3);
+    document.getElementById('roomCodeDisplay').dataset.raw = code;
+  }
+};
+
+window.formatJoinCode = function(el) {
+  let v = el.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+  if (v.length > 3) v = v.slice(0,3) + '-' + v.slice(3);
+  el.value = v;
+};
+
+// ============================================================
+// ROOM: CREATE
+// ============================================================
+window.createRoom = async function() {
+  const name = document.getElementById('createName').value.trim() || 'Jogador 1';
+  const codeRaw = document.getElementById('roomCodeDisplay').dataset.raw;
+  if (!codeRaw) { showNotif('Gere um código primeiro', 'error'); return; }
+  roomCode = codeRaw;
+  myId = 'p1';
+  myName = name;
+
+  roomRef = ref(db, 'rooms/' + roomCode);
+  await set(roomRef, {
+    code: roomCode,
+    status: 'waiting',
+    round: 0,
+    scores: { p1: 0, p2: 0 },
+    names: { p1: name, p2: '' },
+    roles: { p1: '', p2: '' },
+    targetColor: '',
+    chosenColor: '',
+    observerReady: false,
+    selectorDone: false,
+    nextRound: false
+  });
+
+  document.getElementById('waitRoomCode').textContent = roomCode.slice(0,3) + '-' + roomCode.slice(3);
+  document.getElementById('slot1').textContent = name;
+  showScreen('waitingScreen');
+  listenRoom();
+};
+
+// ============================================================
+// ROOM: JOIN
+// ============================================================
+window.joinRoom = async function() {
+  let code = document.getElementById('joinCode').value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const name = document.getElementById('joinName').value.trim() || 'Jogador 2';
+  if (code.length !== 6) { showNotif('Código inválido (6 caracteres)', 'error'); return; }
+
+  roomCode = code;
+  myId = 'p2';
+  myName = name;
+  roomRef = ref(db, 'rooms/' + roomCode);
+
+  const snap = await get(roomRef);
+  if (!snap.exists()) { showNotif('Sala não encontrada', 'error'); return; }
+  const data = snap.val();
+  if (data.status !== 'waiting') { showNotif('Sala já iniciada ou fechada', 'error'); return; }
+  if (data.names.p2) { showNotif('Sala cheia!', 'error'); return; }
+
+  await update(roomRef, { 'names/p2': name, status: 'ready' });
+  listenRoom();
+  showScreen('waitingScreen');
+  document.getElementById('waitRoomCode').textContent = roomCode.slice(0,3) + '-' + roomCode.slice(3);
+};
+
+// ============================================================
+// ROOM LISTENER
+// ============================================================
+function listenRoom() {
+  if (roomListener) off(roomRef, 'value', roomListener);
+  roomListener = onValue(roomRef, snap => {
+    if (!snap.exists()) return;
+    const data = snap.val();
+    names = data.names || { p1: '', p2: '' };
+    scores = data.scores || { p1: 0, p2: 0 };
+
+    // Update waiting slots
+    if (document.getElementById('waitingScreen').classList.contains('active')) {
+      if (names.p1) { document.getElementById('slot1').textContent = names.p1; document.getElementById('slot1').classList.add('joined'); }
+      if (names.p2) { document.getElementById('slot2').textContent = names.p2; document.getElementById('slot2').classList.add('joined'); }
+    }
+
+    // Both joined → start game
+    if (data.status === 'ready' && myId === 'p1') {
+      startMultiplayerGame();
+    }
+
+    // Playing
+    if (data.status === 'playing') {
+      handleGameState(data);
+    }
+  });
+}
+
+// ============================================================
+// START MULTIPLAYER
+// ============================================================
+async function startMultiplayerGame() {
+  currentRound = 1;
+  scores = { p1: 0, p2: 0 };
+  await update(roomRef, { status: 'playing', round: 1, scores: { p1: 0, p2: 0 } });
+  await assignRolesAndStart();
+}
+
+async function assignRolesAndStart() {
+  // Alternate roles each round. Round 1: p1=observer, p2=selector. Round 2: swap. etc.
+  const p1Role = (currentRound % 2 === 1) ? 'observer' : 'selector';
+  const p2Role = (currentRound % 2 === 1) ? 'selector' : 'observer';
+  const color = generateRandomColor();
+  await update(roomRef, {
+    'roles/p1': p1Role,
+    'roles/p2': p2Role,
+    targetColor: color,
+    chosenColor: '',
+    observerReady: false,
+    selectorDone: false,
+    nextRound: false,
+    round: currentRound
+  });
+}
+
+function generateRandomColor() {
+  const h = Math.floor(Math.random() * 360);
+  const s = Math.floor(Math.random() * 60) + 40;
+  const l = Math.floor(Math.random() * 40) + 30;
+  return hslToHex(h, s, l);
+}
+
+// ============================================================
+// HANDLE GAME STATE
+// ============================================================
+let lastStatus = '';
+let lastRound = 0;
+
+function handleGameState(data) {
+  currentRound = data.round;
+  scores = data.scores;
+  names = data.names;
+  myRole = data.roles[myId];
+  opponentName = names[myId === 'p1' ? 'p2' : 'p1'];
+
+  // Role reveal phase (both join playing for first time or new round)
+  const stateKey = data.round + '_' + data.targetColor;
+  if (stateKey !== lastStatus) {
+    lastStatus = stateKey;
+    showRoleReveal(data);
+    return;
+  }
+
+  // Observer ready → show selector UI
+  if (myRole === 'selector' && data.observerReady && !data.selectorDone) {
+    if (!document.getElementById('selectorScreen').classList.contains('active')) {
+      showSelectorGame(data);
+    }
+  }
+
+  // Selector done → show result
+  if (data.selectorDone && data.chosenColor && !data.nextRound) {
+    if (!document.getElementById('roundResultScreen').classList.contains('active')) {
+      showRoundResult(data);
+    }
+  }
+
+  // Next round trigger
+  if (data.nextRound && myId === 'p1') {
+    if (currentRound < TOTAL_ROUNDS) {
+      currentRound++;
+      setTimeout(assignRolesAndStart, 500);
+    } else {
+      setTimeout(() => showGameOver(data), 500);
+    }
+  }
+
+  if (data.nextRound && myId === 'p2') {
+    if (currentRound >= TOTAL_ROUNDS) {
+      setTimeout(() => showGameOver(data), 500);
+    }
+  }
+}
+
+// ============================================================
+// ROLE REVEAL
+// ============================================================
+function showRoleReveal(data) {
+  myRole = data.roles[myId];
+  const badge = document.getElementById('roleBadge');
+  const desc = document.getElementById('roleDesc');
+  if (myRole === 'observer') {
+    badge.textContent = 'OBSERVADOR';
+    badge.className = 'role-badge observer';
+    desc.textContent = 'Você vai ver a cor por 5 segundos. Descreva ela para seu amigo escolher!';
+  } else {
+    badge.textContent = 'SELETOR';
+    badge.className = 'role-badge selector';
+    desc.textContent = 'Ouça a descrição do seu amigo e tente selecionar a cor correta. Você tem 15 segundos!';
+  }
+  showScreen('roleScreen');
+  let w = 100;
+  const bar = document.getElementById('roleCountdown');
+  bar.style.width = '100%';
+  const iv = setInterval(() => {
+    w -= 2;
+    bar.style.width = w + '%';
+    if (w <= 0) {
+      clearInterval(iv);
+      if (myRole === 'observer') {
+        showObserverGame(data);
+      } else {
+        showSelectorWaiting();
+      }
+    }
+  }, 60);
+}
+
+// ============================================================
+// OBSERVER GAME
+// ============================================================
+function showObserverGame(data) {
+  currentTargetColor = data.targetColor;
+  document.getElementById('obsSwatch').style.background = currentTargetColor;
+  document.getElementById('obsHex').textContent = currentTargetColor.toUpperCase();
+  document.getElementById('obsRound').textContent = `RODADA ${currentRound} / ${TOTAL_ROUNDS}`;
+  document.getElementById('obsPhaseMsg').textContent = 'Memorize essa cor e descreva para seu amigo!';
+  showScreen('observerScreen');
+
+  // 5 second visibility
+  let t = 5;
+  const numEl = document.getElementById('obsTimerNum');
+  const bar = document.getElementById('obsTimerBar');
+  numEl.textContent = t;
+  bar.style.width = '100%';
+
+  clearInterval(obsTimerInterval);
+  obsTimerInterval = setInterval(async () => {
+    t--;
+    numEl.textContent = t;
+    bar.style.width = (t / 5 * 100) + '%';
+    if (t <= 0) {
+      clearInterval(obsTimerInterval);
+      // Hide color
+      document.getElementById('obsSwatch').style.filter = 'blur(20px)';
+      document.getElementById('obsHex').style.opacity = '0';
+      document.getElementById('obsPhaseMsg').textContent = 'Agora descreva a cor para seu amigo! Ele tem 15 segundos para selecionar.';
+      // Signal selector to start
+      await update(roomRef, { observerReady: true });
+      // Observer waits for result
+    }
+  }, 1000);
+}
+
+// ============================================================
+// SELECTOR: WAITING → GAME
+// ============================================================
+function showSelectorWaiting() {
+  document.getElementById('selRound').textContent = `// RODADA ${currentRound} / ${TOTAL_ROUNDS}`;
+  currentSelectedColorMp = '#FF0000';
+  document.getElementById('selWaitingOverlay').style.display = 'flex';
+  showScreen('selectorScreen');
+  initPickerCanvas('pickerCanvas', 'hueSlider', 'lightnessSlider', 'selPreviewBox', 'selPreviewHex', 'selPreviewRgb', (hex) => { currentSelectedColorMp = hex; });
+  updateLightnessSliderBg('lightnessSlider', 0);
+}
+
+function showSelectorGame(data) {
+  document.getElementById('selWaitingOverlay').style.display = 'none';
+  currentTargetColor = data.targetColor;
+  // Start 15s timer
+  selTimeLeft = 15;
+  const numEl = document.getElementById('selTimerNum');
+  const bar = document.getElementById('selTimerBar');
+  numEl.textContent = selTimeLeft;
+  bar.style.width = '100%';
+  bar.classList.remove('warning');
+  clearInterval(selTimerInterval);
+  selTimerInterval = setInterval(() => {
+    selTimeLeft--;
+    numEl.textContent = selTimeLeft;
+    const pct = (selTimeLeft / 15) * 100;
+    bar.style.width = pct + '%';
+    if (selTimeLeft <= 5) bar.classList.add('warning');
+    if (selTimeLeft <= 0) { clearInterval(selTimerInterval); submitColor(); }
+  }, 1000);
+}
+
+window.submitColor = async function() {
+  clearInterval(selTimerInterval);
+  const chosen = currentSelectedColorMp;
+  if (!roomRef) return;
+  await update(roomRef, { chosenColor: chosen, selectorDone: true });
+};
+
+// ============================================================
+// ROUND RESULT
+// ============================================================
+function showRoundResult(data) {
+  clearInterval(selTimerInterval);
+  clearInterval(obsTimerInterval);
+  const target = data.targetColor;
+  const chosen = data.chosenColor;
+  const diff = colorDifference(target, chosen);
+  const pts = Math.max(0, Math.round(1000 - diff * 3.5));
+
+  // Award points to selector
+  const selectorId = data.roles.p1 === 'selector' ? 'p1' : 'p2';
+  scores[selectorId] += pts;
+
+  document.getElementById('rrRound').textContent = `RESULTADO · RODADA ${currentRound}`;
+  document.getElementById('rrTargetSwatch').style.background = target;
+  document.getElementById('rrTargetHex').textContent = target.toUpperCase();
+  document.getElementById('rrChosenSwatch').style.background = chosen;
+  document.getElementById('rrChosenHex').textContent = chosen.toUpperCase();
+  document.getElementById('rrPoints').textContent = '+' + pts;
+  document.getElementById('rrDiff').textContent = `diferença de cor: ${diff}`;
+  document.getElementById('rrP1Name').textContent = names.p1;
+  document.getElementById('rrP2Name').textContent = names.p2;
+  document.getElementById('rrP1Score').textContent = scores.p1;
+  document.getElementById('rrP2Score').textContent = scores.p2;
+
+  // Only one player shows next button (host)
+  const btn = document.getElementById('rrNextBtn');
+  btn.style.display = myId === 'p1' ? 'block' : 'none';
+  if (myId === 'p2') {
+    btn.style.display = 'none';
+    const note = document.createElement('p');
+    note.style.cssText = 'font-family:DM Mono,monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.1em';
+    note.textContent = 'Aguardando anfitrião...';
+    btn.parentNode.appendChild(note);
+  }
+
+  showScreen('roundResultScreen');
+  if (myId === 'p1') update(roomRef, { [`scores/${selectorId}`]: scores[selectorId] });
+}
+
+window.nextRound = async function() {
+  if (currentRound >= TOTAL_ROUNDS) {
+    await update(roomRef, { status: 'gameover', nextRound: true });
+    showGameOver({ scores, names });
+  } else {
+    await update(roomRef, { nextRound: true });
+    currentRound++;
+    lastStatus = '';
+    await assignRolesAndStart();
+  }
+};
+
+// ============================================================
+// GAME OVER
+// ============================================================
+function showGameOver(data) {
+  const sc = data.scores || scores;
+  const nm = data.names || names;
+  const winner = sc.p1 >= sc.p2 ? nm.p1 : nm.p2;
+  const tie = sc.p1 === sc.p2;
+  document.getElementById('winTitle').textContent = tie ? 'EMPATE!' : 'VENCEDOR!';
+  document.getElementById('winName').textContent = tie ? 'Vocês empataram!' : winner;
+  document.getElementById('winCrown').textContent = tie ? '🤝' : '🏆';
+
+  const fc = document.getElementById('finalScores');
+  fc.innerHTML = `
+    <div class="final-score-card ${sc.p1 >= sc.p2 && !tie ? 'winner' : ''}">
+      <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);margin-bottom:0.5rem">${nm.p1}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2.5rem;color:var(--accent)">${sc.p1}</div>
+    </div>
+    <div class="final-score-card ${sc.p2 >= sc.p1 && !tie ? 'winner' : ''}">
+      <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);margin-bottom:0.5rem">${nm.p2}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2.5rem;color:var(--accent2)">${sc.p2}</div>
+    </div>`;
+  showScreen('gameOverScreen');
+}
+
+window.playAgain = async function() {
+  if (myId === 'p1') {
+    currentRound = 1;
+    scores = { p1: 0, p2: 0 };
+    lastStatus = '';
+    await update(roomRef, { status: 'playing', round: 1, scores: { p1: 0, p2: 0 }, nextRound: false });
+    await assignRolesAndStart();
+  } else {
+    showNotif('Aguardando anfitrião...', 'info');
+  }
+};
+
+window.leaveRoom = function() {
+  if (roomRef) { off(roomRef, 'value', roomListener); roomRef = null; }
+  myId = null; roomCode = null; currentRound = 0; lastStatus = '';
+  clearInterval(selTimerInterval); clearInterval(obsTimerInterval);
+  showScreen('homeScreen');
+};
+
+// ============================================================
+// SOLO GAME
+// ============================================================
+let soloRound = 0;
+const SOLO_ROUNDS = 10;
+let soloScores = [];
+let soloTargetColor = '';
+let soloSelectedColor = '#FF0000';
+let soloPickInterval = null;
+
+window.startSolo = function() {
+  soloRound = 0; soloScores = [];
+  showScreen('soloScreen');
+  initPickerCanvas('soloPickerCanvas', 'soloHueSlider', 'soloLightnessSlider', 'soloPreviewBox', 'soloPreviewHex', 'soloPreviewRgb', (hex) => { soloSelectedColor = hex; });
+  updateLightnessSliderBg('soloLightnessSlider', 0);
+  soloNextRound();
+};
+
+window.soloNextRound = function() {
+  soloRound++;
+  document.getElementById('soloRound').textContent = `// RODADA ${soloRound} / ${SOLO_ROUNDS}`;
+  soloTargetColor = generateRandomColor();
+  soloSelectedColor = '#FF0000';
+
+  document.getElementById('soloObservePhase').style.display = 'flex';
+  document.getElementById('soloPickPhase').style.display = 'none';
+  document.getElementById('soloRoundResult').style.display = 'none';
+
+  document.getElementById('soloSwatch').style.background = soloTargetColor;
+  document.getElementById('soloSwatch').style.filter = 'none';
+  document.getElementById('soloHex').textContent = soloTargetColor.toUpperCase();
+  document.getElementById('soloHex').style.opacity = '1';
+
+  let t = 5;
+  const numEl = document.getElementById('soloObsTimer');
+  const bar = document.getElementById('soloObsBar');
+  numEl.textContent = t;
+  bar.style.width = '100%';
+
+  const iv = setInterval(() => {
+    t--;
+    numEl.textContent = t;
+    bar.style.width = (t / 5 * 100) + '%';
+    if (t <= 0) {
+      clearInterval(iv);
+      document.getElementById('soloSwatch').style.filter = 'blur(20px)';
+      document.getElementById('soloHex').style.opacity = '0';
+      showSoloPick();
+    }
+  }, 1000);
+};
+
+function showSoloPick() {
+  document.getElementById('soloObservePhase').style.display = 'none';
+  document.getElementById('soloPickPhase').style.display = 'flex';
+
+  let t = 15;
+  const numEl = document.getElementById('soloPickTimer');
+  const bar = document.getElementById('soloPickBar');
+  numEl.textContent = t;
+  bar.style.width = '100%';
+  bar.classList.remove('warning');
+
+  clearInterval(soloPickInterval);
+  soloPickInterval = setInterval(() => {
+    t--;
+    numEl.textContent = t;
+    bar.style.width = (t / 15 * 100) + '%';
+    if (t <= 5) bar.classList.add('warning');
+    if (t <= 0) { clearInterval(soloPickInterval); soloSubmit(); }
+  }, 1000);
+}
+
+window.soloSubmit = function() {
+  clearInterval(soloPickInterval);
+  const diff = colorDifference(soloTargetColor, soloSelectedColor);
+  const pts = Math.max(0, Math.round(1000 - diff * 3.5));
+  const acc = Math.max(0, Math.round((1 - diff / 285) * 100));
+  soloScores.push({ pts, acc, diff });
+
+  const total = soloScores.reduce((s, r) => s + r.pts, 0);
+
+  document.getElementById('soloObservePhase').style.display = 'none';
+  document.getElementById('soloPickPhase').style.display = 'none';
+  document.getElementById('soloRoundResult').style.display = 'flex';
+
+  document.getElementById('soloTargetSwatch').style.background = soloTargetColor;
+  document.getElementById('soloTargetHex').textContent = soloTargetColor.toUpperCase();
+  document.getElementById('soloChosenSwatch').style.background = soloSelectedColor;
+  document.getElementById('soloChosenHex').textContent = soloSelectedColor.toUpperCase();
+  document.getElementById('soloRoundPts').textContent = '+' + pts;
+  document.getElementById('soloTotalDisplay').textContent = total;
+
+  // Accuracy ring
+  const ring = document.getElementById('soloAccuracyRing');
+  const circumference = 314;
+  setTimeout(() => {
+    ring.style.strokeDashoffset = circumference - (acc / 100 * circumference);
+  }, 100);
+  document.getElementById('soloAccText').textContent = acc + '%';
+  ring.style.stroke = acc > 70 ? 'var(--accent)' : acc > 40 ? '#ff8c00' : 'var(--accent3)';
+
+  const btn = document.getElementById('soloNextBtn');
+  if (soloRound >= SOLO_ROUNDS) {
+    btn.textContent = 'VER RESULTADO →';
+    btn.onclick = showSoloOver;
+  } else {
+    btn.textContent = 'PRÓXIMA →';
+    btn.onclick = soloNextRound;
+  }
+};
+
+function showSoloOver() {
+  const total = soloScores.reduce((s, r) => s + r.pts, 0);
+  const avgAcc = Math.round(soloScores.reduce((s, r) => s + r.acc, 0) / soloScores.length);
+  const best = Math.max(...soloScores.map(r => r.pts));
+  document.getElementById('soloFinalPts').textContent = total;
+  document.getElementById('soloFinalAcc').textContent = avgAcc + '%';
+  document.getElementById('soloFinalBest').textContent = best;
+  showScreen('soloOverScreen');
+}
+
+// ============================================================
+// COLOR PICKER CANVAS
+// ============================================================
+function initPickerCanvas(canvasId, hueId, lightId, previewId, hexId, rgbId, onColorChange) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const hueSlider = document.getElementById(hueId);
+  const lightSlider = document.getElementById(lightId);
+  let currentHue = 0;
+  let saturation = 1;
+  let lightness = 0.5;
+  let pickerX = 0, pickerY = 0;
+
+  function resize() {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight || 200;
+    drawPicker();
+  }
+
+  function drawPicker() {
+    const w = canvas.width, h = canvas.height;
+    // White to Hue gradient
+    const gradH = ctx.createLinearGradient(0, 0, w, 0);
+    gradH.addColorStop(0, 'hsl(0,0%,' + (lightness * 100) + '%)');
+    gradH.addColorStop(1, `hsl(${currentHue},100%,${lightness * 100}%)`);
+    ctx.fillStyle = gradH;
+    ctx.fillRect(0, 0, w, h);
+
+    // Black gradient top to bottom
+    const gradV = ctx.createLinearGradient(0, 0, 0, h);
+    gradV.addColorStop(0, 'rgba(0,0,0,0)');
+    gradV.addColorStop(1, 'rgba(0,0,0,0.9)');
+    ctx.fillStyle = gradV;
+    ctx.fillRect(0, 0, w, h);
+
+    // Cursor
+    ctx.beginPath();
+    ctx.arc(pickerX, pickerY, 8, 0, Math.PI * 2);
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(pickerX, pickerY, 6, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  function getColorAtPos(x, y) {
+    const w = canvas.width, h = canvas.height;
+    const sx = Math.max(0, Math.min(1, x / w));
+    const sy = Math.max(0, Math.min(1, y / h));
+    const l = lightness * (1 - sy * 0.9);
+    const s = sx;
+    return hslToHex(currentHue, s * 100, l * 100);
+  }
+
+  function updateColor() {
+    const hex = getColorAtPos(pickerX, pickerY);
+    const rgb = hexToRgb(hex);
+    document.getElementById(previewId).style.background = hex;
+    document.getElementById(hexId).textContent = hex.toUpperCase();
+    document.getElementById(rgbId).textContent = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+    onColorChange(hex);
+    drawPicker();
+  }
+
+  function pick(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    pickerX = Math.max(0, Math.min(canvas.width, (clientX - rect.left) * (canvas.width / rect.width)));
+    pickerY = Math.max(0, Math.min(canvas.height, (clientY - rect.top) * (canvas.height / rect.height)));
+    updateColor();
+  }
+
+  let dragging = false;
+  canvas.addEventListener('mousedown', e => { dragging = true; pick(e); });
+  canvas.addEventListener('mousemove', e => { if (dragging) pick(e); });
+  window.addEventListener('mouseup', () => { dragging = false; });
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); dragging = true; pick(e); }, { passive: false });
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); if (dragging) pick(e); }, { passive: false });
+  window.addEventListener('touchend', () => { dragging = false; });
+
+  hueSlider.addEventListener('input', () => {
+    currentHue = parseInt(hueSlider.value);
+    updateLightnessSliderBg(lightId, currentHue);
+    updateColor();
+  });
+
+  lightSlider.addEventListener('input', () => {
+    lightness = parseInt(lightSlider.value) / 100;
+    updateColor();
+  });
+
+  new ResizeObserver(resize).observe(canvas);
+  resize();
+}
+
+function updateLightnessSliderBg(id, hue) {
+  document.getElementById(id).style.background = `linear-gradient(to right, #000, hsl(${hue},100%,50%), #fff)`;
+}
+
+// ============================================================
+// COLOR UTILS
+// ============================================================
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function colorDifference(hex1, hex2) {
+  const c1 = hexToRgb(hex1), c2 = hexToRgb(hex2);
+  return Math.sqrt(Math.pow(c1.r - c2.r, 2) + Math.pow(c1.g - c2.g, 2) + Math.pow(c1.b - c2.b, 2));
+}
+
+// expose globals
+window.showScreen = window.showScreen;
+</script>
+</body>
+</html>
